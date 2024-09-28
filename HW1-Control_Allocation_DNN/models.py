@@ -3,26 +3,27 @@ import torch.nn as nn
 
 
 class allocationNN(nn.Module):
-    def __init__(self):
+    def __init__(self, dropout):
         super(allocationNN, self).__init__()
+        self.name = 'allocationNN'
        
         self.encoder = nn.Sequential(
             nn.Linear(3, 24),
             nn.ReLU(),
-            # nn.Dropout(p=0.5),
+            nn.Dropout(p=dropout),
             nn.Linear(24, 12),
             nn.ReLU(),
-            # nn.Dropout(p=0.5),
+            nn.Dropout(p=dropout),
             nn.Linear(12, 5)
         )
 
         self.decoder = nn.Sequential(
             nn.Linear(5, 24),
             nn.ReLU(),
-            # nn.Dropout(p=0.5),
+            nn.Dropout(p=dropout),
             nn.Linear(24, 12),
             nn.ReLU(),
-            # nn.Dropout(p=0.5),
+            nn.Dropout(p=dropout),
             nn.Linear(12, 3)
         )
 
