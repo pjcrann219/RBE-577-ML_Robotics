@@ -9,10 +9,10 @@ import torch.optim as optim
 # Load resnet 50 best weights
 model = resnet50(weights=ResNet50_Weights.IMAGENET1K_V1)
 
-# Freeze all but fc layer
-for name, param in model.named_parameters():
-    if "fc" not in name:
-        param.requires_grad = False
+# # Freeze all but fc layer
+# for name, param in model.named_parameters():
+#     if "fc" not in name:
+#         param.requires_grad = False
 
 # change FC output to 10 classes
 model.fc = nn.Linear(model.fc.in_features, 10)
@@ -41,6 +41,7 @@ model = model.to(device)
 
 criterion = nn.CrossEntropyLoss()
 optimizer = optim.Adam(model.parameters(), lr=hyperParams['learning_rate'])
+scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.20)
 
 writer = SummaryWriter(log_dir='runs/testing')
 
@@ -105,5 +106,5 @@ except KeyboardInterrupt:
 # Save Model
 model_name = input('Enter name to save model, enter otherwise: ')
 if model_name:
-    torch.save(model.state_dict, 'models/' + model_name + '.pth')
+    torch.save(model, 'models/' + model_name + '.pth')
     print(f"Model saved in models/{model_name}.pth")
