@@ -5,6 +5,11 @@ from torchvision import datasets, transforms
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 import torch.optim as optim
+import time
+def write_readme():
+
+        print(f"Pytorch version: {torch.__version__}\n")  # Write PyTorch version
+write_readme()
 
 # Load resnet 50 best weights
 model = resnet50(weights=ResNet50_Weights.IMAGENET1K_V1)
@@ -47,6 +52,7 @@ writer = SummaryWriter(log_dir='runs/testing')
 
 try:
     for epoch in range(hyperParams['num_epochs']):
+        start_time = time.time()
         model.train()
         train_avg_loss = 0.0
         total = 0
@@ -98,8 +104,11 @@ try:
         writer.add_scalar('Loss/test', test_avg_loss, epoch)
         test_accuracy = 100 * correct / total
         writer.add_scalar('Accuracy/test', test_accuracy, epoch)
-        
+        elapsed_time = int(time.time() - start_time)
+        print(f'Elapsed Epoch time: {elapsed_time}s')
+        print(f'Epoch: {epoch}/{hyperParams["num_epochs"]}')
         print(f'Test Loss: {test_avg_loss:.4f}, Test Accuracy: {test_accuracy:.2f}%')
+        scheduler.step()
 except KeyboardInterrupt:
     print('\nTraining Interrupted')
 
