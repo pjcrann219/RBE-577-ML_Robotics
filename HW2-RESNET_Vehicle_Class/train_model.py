@@ -6,18 +6,19 @@ from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 import torch.optim as optim
 import time
-def write_readme():
 
+
+def write_readme():
         print(f"Pytorch version: {torch.__version__}\n")  # Write PyTorch version
 write_readme()
 
 # Load resnet 50 best weights
 model = resnet50(weights=ResNet50_Weights.IMAGENET1K_V1)
 
-# # Freeze all but fc layer
-# for name, param in model.named_parameters():
-#     if "fc" not in name:
-#         param.requires_grad = False
+# Freeze all but fc layer
+for name, param in model.named_parameters():
+    if "fc" not in name:
+        param.requires_grad = False
 
 # change FC output to 10 classes
 model.fc = nn.Linear(model.fc.in_features, 10)
@@ -26,7 +27,8 @@ model.fc = nn.Linear(model.fc.in_features, 10)
 hyperParams = {
     'batch_size': 32,
     'num_epochs': 100,
-    'learning_rate': 0.001
+    'learning_rate': 0.0001,
+    'weight_decay': 0.0001
 }
 
 transform = transforms.Compose([
@@ -45,7 +47,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 model = model.to(device)
 
 criterion = nn.CrossEntropyLoss()
-optimizer = optim.Adam(model.parameters(), lr=hyperParams['learning_rate'])
+optimizer = optim.Adam(model.parameters(), lr=hyperParams['learning_rate'], weight_decay=hyperParams['weight_decay'])
 scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.20)
 
 writer = SummaryWriter(log_dir='runs/testing')
@@ -105,10 +107,11 @@ try:
         test_accuracy = 100 * correct / total
         writer.add_scalar('Accuracy/test', test_accuracy, epoch)
         elapsed_time = int(time.time() - start_time)
-        print(f'Elapsed Epoch time: {elapsed_time}s')
-        print(f'Epoch: {epoch}/{hyperParams["num_epochs"]}')
+        # print(f'Elapsed Epoch time: {elapsed_time}s')
+        print(f'Epoch: {epoch}/{hyperParams["num_epochs"]}', end='\t')
         print(f'Test Loss: {test_avg_loss:.4f}, Test Accuracy: {test_accuracy:.2f}%')
         scheduler.step()
+        
 except KeyboardInterrupt:
     print('\nTraining Interrupted')
 

@@ -7,7 +7,7 @@ from PIL import Image
 from matplotlib import pyplot as plt
 
 # Load the entire model (architecture + weights)
-model = torch.load('models/full_retrain_scheduler.pth')
+model = torch.load('models/final_model.pth')
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 model = model.to(device)
 model.eval()
