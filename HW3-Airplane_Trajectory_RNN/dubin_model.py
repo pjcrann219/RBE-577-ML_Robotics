@@ -5,6 +5,7 @@ import csv
 import pandas as pd
 from torch.utils.data import random_split, DataLoader, TensorDataset
 import torch.nn.functional as F
+import torch.optim as optim
 class RNN(nn.Module):
 	def __init__(self, input_size, hidden_size, output_size):
 		super(RNN, self).__init__()
@@ -14,29 +15,31 @@ class RNN(nn.Module):
 	def forward(self, input_tensor, hidden_tensor):
 		combined = torch.cat((input_tensor, hidden_tensor),1)
 		hidden = self.i2h(combined)
-		output = self.i20(combined)
+		output = self.i2o(combined)
 		return output, hidden
-	def init_hidden(self):
+	def init_hidden(self, batch_size=1):
 		return torch.zeros(self.hidden_size,1 )
 hyper_params = {
     'train_ratio': 0.8,
     'batch_size': 32,
     'num_epochs': 100,
     'learning_rate': 0.001,
-	'hidden_size': 256
+	'hidden_size': 256,
+	'input_size': 4,
+	'output_size': 3
 }
 ##load in the data
 file_path = '/home/mainubuntu/Desktop/RBE577-MachineLearningforRobotics/homework3/data_array_smaller.csv'
 df = pd.read_csv(file_path)
 df.iloc[:, 1] += 1000  #fix the data because I messed it up
-# print(df.head())
+
+##Split the data into inputs and outputs and convert to tensors and segment the data to preserve the paths 
 split_indices = df[(df['X'] == 0) & (df['Y'] == 0)].index.tolist()
 split_indices.append(len(df))
 segments = []
 start_idx = 0
 data_tensors =[]
     
-##Split the data into inputs and outputs and convert to tensors and segment the data to preserve the paths 
 train_ratio = hyper_params['train_ratio']  # 80% for training, 20% for validation
 num_segments = len(split_indices)
 print(num_segments)
@@ -49,24 +52,28 @@ for end_idx in split_indices:
 	start_idx = end_idx+1  # Move to the next segment
 
 segment = segments[1]
-output_tensor = torch.tensor(segment[['X', 'Y', 'Z']].values, dtype=torch.float32, requires_grad=True)# Define the split ratio
+output_tensor = torch.tensor(segment[['X', 'Y', 'Z']].values, dtype=torch.float32, requires_grad=True)
 input_tensor = torch.tensor(segment[['XDelta', 'YDelta', 'HeadingDelta', 'GammaDelta']].values, dtype=torch.float32)
 # print(output_tensor)
 #intiialize the loss function 
 mse_loss = nn.MSELoss()
 ##initialize the RNN
-rnn = RNN(5, hyper_params['hidden_size'], 3)
+rnn = RNN(hyper_params['input_size'], hyper_params['hidden_size'], hyper_params['output_size'])
 hidden_tensor = rnn.init_hidden()
-input_tensor = input_tensor
-print(input_tensor.shape)
-print(hidden_tensor.shape)
+input_tensor = input_tensor.unsqueeze(1)  # Add a batch dimension
+hidden_tensor = hidden_tensor.unsqueeze(1)
 num_pads = hidden_tensor.shape[0]-input_tensor.shape[0]
 
 print(num_pads)
 input_tensor = F.pad(input_tensor, (0,0,num_pads,0), mode='constant', value=0)
+print(hidden_tensor.shape)
 print(input_tensor.shape)
-
+optimizer = optim.Adam(rnn.parameters(), lr=0.001)
+rnn.train()
 output, next_hidden = rnn(input_tensor, hidden_tensor)
-
+loss = mse_loss(output, output_tensor)
+optimizer.zero_grad()
+loss.backward()
+optimizer.step()
 # input_tensor = 
 
