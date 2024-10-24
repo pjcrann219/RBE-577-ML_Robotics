@@ -14,7 +14,7 @@ class SimpleRNN(nn.Module):
 
     def forward(self, x):
         out, _ = self.rnn(x)  # RNN outputs and hidden state
-        out = self.fc(out)  # Take the last time step output
+        out = self.fc(out[:, -1, :])  # Use the output of the last time step
         return out
 
 def plotTrajTensor(data):
@@ -46,7 +46,7 @@ class DataClass:
         return run, done
 
     def get_run_torch(self, idx):
-        return torch.tensor(self.data.loc[self.data['group_id'] == idx, ['X', 'Y', 'Z', 'XDelta', 'YDelta', 'HeadingDelta']].values, dtype=torch.float)
+        return torch.tensor(self.data.loc[self.data['group_id'] == idx, ['X', 'Y', 'Z', 'XDelta', 'YDelta', 'HeadingDelta', 'GammaDelta']].values, dtype=torch.float)
 
     def reset(self):
         self.current_idx = 0
