@@ -8,7 +8,7 @@ from DataClass import DataClass
 from rnnClass import RNN
 
 # Load data
-data = pd.read_csv('data/dataArray_table.csv', nrows=2500)
+data = pd.read_csv('data/dataArray_table.csv', nrows=250000)
 Data = DataClass(data)
 
 # Initialize model with same parameters as training
@@ -18,12 +18,12 @@ output_size = 3
 model = RNN(input_size, hidden_size, output_size, Data.max_seq_length)
 
 # Load the saved model
-checkpoint = torch.load('models/model.pth')
+checkpoint = torch.load('models/model_cont_dev_2.pth')
 model.load_state_dict(checkpoint['model_state_dict'])
 model.eval()  # Set to evaluation mode
 
 # Run inference on a few examples
-n_examples = 4  # Number of trajectories to plot
+n_examples = 10
 
 plt.figure(figsize=(15, 5))
 for i in range(n_examples):
@@ -40,16 +40,12 @@ for i in range(n_examples):
     true_traj = true_traj[:seq_length]
     predicted_traj = predicted_traj[:seq_length]
     
-    # Create subplot for this trajectory
-    plt.subplot(1, n_examples, i+1)
-    
-    # Plot true trajectory
+    plt.subplot(2, n_examples//2, i+1)
+
     plt.plot(true_traj[:, 0], true_traj[:, 1], 'b-', label='True')
-    
-    # Plot predicted trajectory
     plt.plot(predicted_traj[:, 0].detach(), predicted_traj[:, 1].detach(), 'r--', label='Predicted')
     
-    plt.title(f'Trajectory {i+1}')
+    plt.title(f'Run {i+1}')
     plt.xlabel('X')
     plt.ylabel('Y')
     plt.legend()

@@ -6,143 +6,121 @@ import torch.optim as optim
 from matplotlib import pyplot as plt
 from DataClass import DataClass
 from rnnClass import RNN
-from sklearn.model_selection import train_test_split
-import datetime
-import os
 from torch.utils.tensorboard import SummaryWriter
-def create_tensorboard_writer():
-    current_time = datetime.datetime.now().strftime('%Y%m%d-%H%M%S')
-    log_dir = os.path.join('runs', current_time)
-    return SummaryWriter(log_dir) 
+from datetime import datetime
+
+name = datetime.now().strftime("%y%m%d%H%M%S")
+print(f"Run {name}")
+writer = SummaryWriter('runs/run_' + name)
+
+data = pd.read_csv('data/dataArray_table.csv', nrows=250000)
+Data = DataClass(data)
+
 input_size = 4
 hidden_size = 32
 output_size = 3
-learning_rate = 0.0005
-num_epochs = 1000
-num_layers = 3
-test_percent = 0.2
-seed = 25 #random gen seed
+learning_rate = 2e-6 #0.0005 / 10
+num_epochs = 200
 
-##Load and Split the data
-# Initialize TensorBoard writer
-writer = create_tensorboard_writer()
+model = RNN(input_size, hidden_size, output_size, Data.max_seq_length)
 
-# Log hyperparameters
-writer.add_hparams(
-    {
-        'learning_rate': learning_rate,
-        'hidden_size': hidden_size,
-        'num_layers': num_layers,
-        'batch_size': 1  # Since we're processing one sequence at a time
-    },
-    {'dummy': 0}  # Required placeholder metric
-)
+checkpoint = torch.load('models/model_cont_dev_1.pth')
+model.load_state_dict(checkpoint['model_state_dict'])
 
-data = pd.read_csv('data/dataArray_table.csv', nrows=10000)
-data.iloc[:,1] += 1000
-data['isNew'] = data['X'] == 0
-data['group_id'] = data['isNew'].cumsum() - 1
-groups = data['group_id'].unique()
-groups = data['group_id'].unique()
-train, test = train_test_split(groups, test_size = test_percent, random_state=seed)
-train_data = data[data['group_id'].isin(train)].copy()
-test_data = data[data['group_id'].isin(test)].copy()
-train_data['group_id'] = pd.Categorical(train_data['group_id']).codes
-test_data['group_id'] = pd.Categorical(test_data['group_id']).codes
-train_loader = DataClass(train_data)
-test_loader = DataClass(test_data)
-train_losses = []
-test_losses = []
-Data = DataClass(data)
-
-
-
-
-##initialize the Model
-model = RNN(input_size, hidden_size, output_size, Data.max_seq_length, num_layers)
 criterion = nn.MSELoss(reduction='none')
-optimizer = optim.Adam(model.parameters(), lr=learning_rate)
-scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=50, gamma=0.5)
+optimizer = optim.Adam(model.parameters(), lr=learning_rate, weight_decay=0.0001)
+scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.7)
 
-running_loss = []
-sample_input = torch.randn(1, input_size)
-writer.add_graph(model, (sample_input, train_loader.max_seq_length))
+running_train_loss = []
+running_test_loss = []
 for epoch in range(num_epochs):
+    epoch += 200
     print(f"Epoch: {epoch}", end='')
+
+    ## Training
     Data.reset()
     done = False
-    batch = 0
-    epoch_loss = 0
+    train_batch_length = 0
+    train_epoch_loss = 0
     model.train()
     while not done:
-        input, traj, seq_length, done = train_loader.next()
+        if Data.current_idx not in Data.training_group_ids:
+            # id not in training group, skip
+            done = Data.iterate_idx()
+        else:
+            # id in training group, train
+            input, traj, seq_length, done = Data.next()
 
-        input = input.unsqueeze(0)
-        
-        output = model(input, seq_length)
-
-        mask = torch.arange(Data.max_seq_length).unsqueeze(0) < seq_length
-        mask = mask.unsqueeze(-1).expand_as(output)
-        
-        loss = criterion(output, traj.unsqueeze(0))
-        masked_loss = (loss * mask.float()).sum() / mask.float().sum()
-        
-        optimizer.zero_grad()
-        masked_loss.backward()
-        for name, param in model.named_parameters():
-            if param.grad is not None:
-                writer.add_histogram(f'gradients/{name}', param.grad, epoch)
-        optimizer.step()
-        
-        epoch_loss += masked_loss.item()
-        batch += 1
-    
-    scheduler.step()
-    avg_epoch_loss = epoch_loss / batch
-    running_loss.append(avg_epoch_loss)
-
-    ##test loop
-    model.eval()
-    total_loss_test = 0
-    num_batches = 0
-    with torch.no_grad():
-        test_loader.reset()
-        done = False
-        while not done:
-            input, traj, seq_length, done = test_loader.next()
             input = input.unsqueeze(0)
-            output = model(input, seq_length)
             
-            mask = torch.arange(test_loader.max_seq_length).unsqueeze(0) < seq_length
+            output = model(input, seq_length)
+
+            mask = torch.arange(Data.max_seq_length).unsqueeze(0) < seq_length
             mask = mask.unsqueeze(-1).expand_as(output)
             
             loss = criterion(output, traj.unsqueeze(0))
             masked_loss = (loss * mask.float()).sum() / mask.float().sum()
             
-            total_loss_test += masked_loss.item()
-            num_batches += 1
+            optimizer.zero_grad()
+            masked_loss.backward()
+            optimizer.step()
+            
+            train_epoch_loss += masked_loss.item()
+            train_batch_length += 1
 
+    ## Testing
+    Data.reset()
+    done = False
+    test_batch_length = 0
+    test_epoch_loss = 0
+    model.eval()
+    while not done:
+        if Data.current_idx not in Data.testing_group_ids:
+            # id not in testing group, skip
+            done = Data.iterate_idx()
+        else:
+            # id in testing group, train
+            with torch.no_grad():
+                input, traj, seq_length, done = Data.next()
 
-    avg_test_loss = total_loss_test/num_batches
-    writer.add_scalar('Loss/train', avg_train_loss, epoch)
-    writer.add_scalar('Loss/test', avg_test_loss, epoch)
-    writer.add_scalar('Learning_rate', scheduler.get_last_lr()[0], epoch)        
-    for name, param in model.named_parameters():
-        writer.add_histogram(f'parameters/{name}', param.data, epoch)
-    print(f"Epoch: {epoch} Train Loss: {avg_epoch_loss:.6f} Test Loss: {avg_test_loss:.6f}")
+                input = input.unsqueeze(0)
+                
+                output = model(input, seq_length)
+
+                mask = torch.arange(Data.max_seq_length).unsqueeze(0) < seq_length
+                mask = mask.unsqueeze(-1).expand_as(output)
+                
+                loss = criterion(output, traj.unsqueeze(0))
+                masked_loss = (loss * mask.float()).sum() / mask.float().sum()
+                
+                test_epoch_loss += masked_loss.item()
+                test_batch_length += 1
+
+    scheduler.step()
+    avg_train_epoch_loss = train_epoch_loss / train_batch_length
+    running_train_loss.append(avg_train_epoch_loss)
+
+    avg_test_epoch_loss = test_epoch_loss / test_batch_length
+    running_test_loss.append(avg_test_epoch_loss)
+    print(f" Train Loss: {avg_train_epoch_loss}, Test Loss: {avg_test_epoch_loss}")
+
+    # Log to tensorboard
+    writer.add_scalar('Loss/train', avg_train_epoch_loss, epoch)
+    writer.add_scalar('Loss/test', avg_test_epoch_loss, epoch)
+    writer.add_scalar('Learning_Rate', scheduler.get_last_lr()[0], epoch)
+
 torch.save({
     'model_state_dict': model.state_dict(),
     'optimizer_state_dict': optimizer.state_dict(),
     'epoch': epoch,
-    'loss': running_loss,
+    'loss': running_train_loss,
 }, 'models/model.pth')
-writer.close()
-plt.figure(figsize=(10, 6))
-plt.plot(train_losses, label='Train Loss')
-plt.plot(test_losses, label='Test Loss')
+
+plt.figure(figsize=(10, 5))
+plt.plot(running_train_loss, 'b',label='Training Loss')
+plt.plot(running_test_loss, 'r', label='Testing Loss')
+plt.title('Loss Over Time')
 plt.xlabel('Epoch')
-plt.ylabel('Loss')
-plt.title('Training and Test Loss Over Time')
-plt.legend()
-plt.grid(True)
+plt.ylabel('Average Loss')
 plt.show()
+writer.close()
