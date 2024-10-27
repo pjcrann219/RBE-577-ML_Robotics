@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 
 class RNN(nn.Module):
-    def __init__(self, input_size, hidden_size, output_size, max_seq_length,num_layers):
+    def __init__(self, input_size, hidden_size, output_size, max_seq_length,num_layers=1):
         super(RNN, self).__init__()
         self.hidden_size = hidden_size
         self.num_layers = num_layers

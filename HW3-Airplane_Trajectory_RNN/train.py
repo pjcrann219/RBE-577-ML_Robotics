@@ -19,13 +19,14 @@ Data = DataClass(data)
 input_size = 4
 hidden_size = 32
 output_size = 3
-learning_rate = 2e-6 #0.0005 / 10
-num_epochs = 200
+learning_rate = 0.0005
+num_epochs = 400
 
 model = RNN(input_size, hidden_size, output_size, Data.max_seq_length)
 
-checkpoint = torch.load('models/model_cont_dev_1.pth')
-model.load_state_dict(checkpoint['model_state_dict'])
+# Used to continue training
+# checkpoint = torch.load('models/model_cont_dev_1.pth')
+# model.load_state_dict(checkpoint['model_state_dict'])
 
 criterion = nn.MSELoss(reduction='none')
 optimizer = optim.Adam(model.parameters(), lr=learning_rate, weight_decay=0.0001)
@@ -34,7 +35,6 @@ scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.7)
 running_train_loss = []
 running_test_loss = []
 for epoch in range(num_epochs):
-    epoch += 200
     print(f"Epoch: {epoch}", end='')
 
     ## Training

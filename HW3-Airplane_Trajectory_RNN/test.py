@@ -18,7 +18,7 @@ output_size = 3
 model = RNN(input_size, hidden_size, output_size, Data.max_seq_length)
 
 # Load the saved model
-checkpoint = torch.load('models/model_cont_dev_2.pth')
+checkpoint = torch.load('models/CurrentModel.pth')
 model.load_state_dict(checkpoint['model_state_dict'])
 model.eval()  # Set to evaluation mode
 
