@@ -3,9 +3,11 @@ from __future__ import absolute_import, division, print_function
 import os
 import skimage.transform
 import numpy as np
-import PIL.Image as pil
+from PIL import Image
+import torch 
+from torch.utils.data import DataLoader
 
-from .mono_dataset import MonoDataset
+from monodepth2.datasets.mono_dataset import MonoDataset
 
 
 class SyndroneDataset(MonoDataset):
@@ -21,13 +23,8 @@ class SyndroneDataset(MonoDataset):
         # flip augmentation.
 
         # 1920x1080 images
-        # h = 1080
-        # w = 1920
         height = 1080
         width = 1920
- 
-
-
 
         self.K = np.array([[0.58, 0, 0.5, 0],
                            [0, 1.92, 0.5, 0],
@@ -38,31 +35,75 @@ class SyndroneDataset(MonoDataset):
 
         self.full_res_shape = (1920, 1080)  #images are 1920 x 1080
         self.side_map = {"2": 2, "3": 3, "l": 2, "r": 3}
-    def get_image_path(self, folder, frame_index, side): #data path is located in the rgb folder of the depth set we are training
-        f_str = "{:06d}{}".format(frame_index, self.img_ext)
-        image_path = os.path.join(self.data_path, "rgb", "{:05d}.jpg".format(frame_index))
+
+    def get_image_path(self, folder, frame_index, side=False): #data path is located in the rgb folder of the depth set we are training
+        if frame_index < 0:
+            frame_index = 0
+        image_path = os.path.join(self.data_path, "{:05d}.jpg".format(frame_index))
         return image_path
-    def get_color(self, frame_index, do_flip):
+    
+    def get_color(self, folder, frame_index, side, do_flip):
         # Get the path to the color image based on the frame index
         color = self.loader(self.get_image_path(None, frame_index, None))
 
         # Optionally flip the image horizontally
         if do_flip:
-            color = color.transpose(pil.FLIP_LEFT_RIGHT)
-
+            color = color.transpose(Image.FLIP_LEFT_RIGHT)
         return color
+    
     def check_depth(self):
-        line = self.filenames[0].split()
-        scene_name = line[0]
-        frame_index = int(line[1])
-
-        town_filename = os.path.join(
-            self.data_path,
-            scene_name,
-            "rgb",
-            "{:06d}.jpg".format(int(frame_index)))
-
-        return os.path.isfile(town_filename)
+        """Check if depth data exists for this dataset"""
+        # Get first filename to test
+        frame_index = 0
+        depth_path = os.path.join(
+            self.data_path.replace('rgb', 'semantic'),  # Assuming depth is in parallel folder
+            f"{frame_index:05d}.png"                 # Match your depth filename format
+        )
+        return False
+        return os.path.isfile(depth_path)
 
 
+data_path = 'data/Town01_Opt_120_color/Town01_Opt_120/ClearNoon/height20m/rgb'
+height = 1080
+width = 1920
+frame_idxs = [-1, 0, 1]
+num_scales = 4
+is_train= False
+img_ext= '.jpg'
 
+# load in 20m rgb
+import os
+filepath = 'data/Town01_Opt_120_color/Town01_Opt_120/ClearNoon/height20m/rgb'
+filenames = sorted(os.listdir(filepath))
+
+print(filenames[0])
+
+dataset = SyndroneDataset(data_path,
+                 filenames,
+                 height,
+                 width,
+                 frame_idxs,
+                 num_scales,
+                 is_train=False,
+                 img_ext='.jpg')
+
+dataloader = DataLoader(
+    dataset,
+    batch_size=1,
+    shuffle=False,
+    num_workers=0,
+    pin_memory=True,
+    drop_last=True
+)
+
+# Test the dataloader
+print(f"Dataset size: {len(dataset)}")
+print(f"Number of batches: {len(dataloader)}")
+
+# Load and inspect first batch
+for batch_idx, data in enumerate(dataloader):
+    print("\nBatch:", batch_idx)
+    for key in data.keys():
+        if isinstance(data[key], torch.Tensor):
+            print(f"{key}: shape {data[key].shape}")
+    break  # Just show first batch
