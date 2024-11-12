@@ -1,0 +1,5 @@
+How to run with syndrone data set
+
+1. Download the syndrone dataset and populate the data folder with the images
+2. Activate the enviroment.yml conda enviroment
+3. run the train.py file with python train.py --split syndrone
