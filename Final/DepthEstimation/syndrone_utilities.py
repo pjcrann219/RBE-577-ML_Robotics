@@ -13,7 +13,7 @@ import DPT.util.io as io
 from DPT.dpt.transforms import Resize, NormalizeImage, PrepareForNet
 from DPT.dpt.models import DPTDepthModel
 
-def load_model(weights="dpt_large", backbone=None, device=None, eval=False):
+def load_model(weights="dpt_large", backbone="vitl16_384", device=None, eval=False):
     # Function to load model given weights and device
     if weights == "dpt_large":
         weights = "DepthEstimation/DPT/weights/dpt_large-midas-2f21e586.pt"

@@ -32,7 +32,7 @@ print("device: %s" % device)
 hparams = {
     'learning_rate':1e-5,
     'batch_size': 1,
-    'num_epochs': 1,
+    'num_epochs': 30,
     'model_weights': "dpt_large",
     'lam': 0.5,
     'gamma': 0.93
@@ -53,7 +53,7 @@ dataloader_test = SyndroneDataloader(batch_size=1,shuffle=False, split='test')
 optimizer = torch.optim.Adam(model.parameters(), lr=hparams['learning_rate'])
 scheduler = ExponentialLR(optimizer, gamma=hparams['gamma'])
 
-num_epochs = 30
+num_epochs = hparams['num_epochs']
 
 debug = False
 for epoch in range(num_epochs):
