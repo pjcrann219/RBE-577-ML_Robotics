@@ -50,11 +50,10 @@ dataloader_train = SyndroneDataloader(batch_size=1,shuffle=True, split='train')
 dataloader_test = SyndroneDataloader(batch_size=1,shuffle=False, split='test')
 
 # Optimizer and LR Schuduler
-# lr=1e-7
 optimizer = torch.optim.Adam(model.parameters(), lr=hparams['learning_rate'])
 scheduler = ExponentialLR(optimizer, gamma=hparams['gamma'])
 
-num_epochs = 50
+num_epochs = 30
 
 debug = False
 for epoch in range(num_epochs):
@@ -65,16 +64,12 @@ for epoch in range(num_epochs):
     train_epoch_loss = 0
     model.train()
     for batch_idx, (inputs, truths) in enumerate(dataloader_train):
-        # if batch_idx > 10:
-        #     break
+
         optimizer.zero_grad()
 
         inputs, truths = inputs.to(device), truths.to(device)
         outputs = model(inputs)
         aligned_pred = align_pred(outputs.cpu())
-
-        # truth_dist = 1 / truths.cpu()
-        # pred_dist = 1 / aligned_pred
 
         loss = eigen_loss(aligned_pred.cpu(), truths.cpu(), lam=hparams['lam'])
         train_epoch_loss += loss.item()
@@ -86,24 +81,6 @@ for epoch in range(num_epochs):
         # Aligned Outputs = align_pred(output) = pred 1/distance
         # Pred distance = 1 / aligned_prediction
 
-        # Use aligned_pred and truths for loss function
-
-        # if debug:
-        #     print(f"batch: {batch_idx} - Shapes: input {inputs.shape}, output {outputs.shape}, truth {truths.shape}")
-        #     print(f"\tOutput: min({outputs.min():.6f}) max({outputs.max():.6f}) avg({outputs.mean():.6f})")
-        #     print(f"\tAligned Output: min({aligned_pred.min():.6f}) max({aligned_pred.max():.6f}) avg({aligned_pred.mean():.6f})")
-        #     print(f"\tTruth: min({truths.min():.6f}) max({truths.max():.6f}) avg({truths.mean():.6f})")
-            
-        #     print(f"\tTruth_dist: min({truth_dist.min():.6f}) max({truth_dist.max():.6f}) avg({truth_dist.mean():.6f})")
-        #     print(f"\tpred_dist: min({pred_dist.min():.6f}) max({pred_dist.max():.6f}) avg({pred_dist.mean():.6f})")
-
-        #     print(f"Loss: {loss}")
-
-            # plot_tensors(inputs.cpu().detach(), outputs.cpu().detach(), truths.cpu().detach())
-        # truth_mmm = [f"{truths.min().item():.6f}", f"{truths.mean().item():.6f}", f"{truths.max().item():.6f}"]
-        # pred_mmm = [f"{aligned_pred.min().item():.6f}", f"{aligned_pred.mean().item():.6f}", f"{aligned_pred.max().item():.6f}"]
-        # print(f"batch: {batch_idx}/{len(dataloader)} loss: {loss.item():.4f}\t- truth: {truth_mmm} pred: {pred_mmm}")
-
     train_epoch_loss = train_epoch_loss/len(dataloader_train)
     
     # Testing
@@ -111,16 +88,10 @@ for epoch in range(num_epochs):
     model.eval()
     with torch.no_grad():
         for batch_idx, (inputs, truths) in enumerate(dataloader_test):
-            
-            # if batch_idx > 10:
-            #     break
 
             inputs, truths = inputs.to(device), truths.to(device)
             outputs = model(inputs)
             aligned_pred = align_pred(outputs.cpu())
-
-            # truth_dist = 1 / truths.cpu()
-            # pred_dist = 1 / aligned_pred
 
             loss = eigen_loss(aligned_pred.cpu(), truths.cpu(), lam=hparams['lam'])
             test_epoch_loss += loss.item()

@@ -8,6 +8,7 @@ import DPT.util.io as io
 from DPT.dpt.transforms import Resize, NormalizeImage, PrepareForNet
 
 def load_rgb(rgb_path):
+    # Load input images
     net_w = net_h = 384
     normalization = NormalizeImage(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])
     rgb_transform = Compose([
@@ -30,6 +31,7 @@ def load_rgb(rgb_path):
     return rgb_inputs
 
 def load_depth(depth_path):
+    # Load depth images
     depth_map = Image.open(depth_path)
     depth_map = np.asarray(depth_map, dtype=np.float32) 
     depth_min, depth_max = depth_map.min(), depth_map.max()
@@ -40,6 +42,8 @@ def load_depth(depth_path):
     return depth_map
 
 def save_frame(path, input, truth, pred_orig, pred, num):
+    # Save each frame as img
+
     os.makedirs(path, exist_ok=True)
 
     fig, axs = plt.subplots(1, 4, figsize=(20, 5))
@@ -64,29 +68,24 @@ def save_frame(path, input, truth, pred_orig, pred, num):
     plt.tight_layout()
     filename = os.path.join(path, f'img_{num}.png')
     plt.savefig(filename, bbox_inches='tight', dpi=300)
-    # plt.show()
     plt.close()
 
 def save_as_video(image_folder, output_video, fps=10):
-    # Function to extract the numerical part from the filename
+    # Save frame images as a mp4 video
     def get_number(filename):
         return int(filename.split('_')[1].split('.')[0])
 
-    # Load and sort images by numerical order
     images = sorted(
         [os.path.join(image_folder, file) for file in os.listdir(image_folder) if file.endswith(".png")],
         key=lambda x: get_number(os.path.basename(x))
     )
 
-    # Read the first image to get dimensions
     frame = cv2.imread(images[0])
     height, width, _ = frame.shape
 
-    # Define the codec and create the video writer with H.264 codec
-    fourcc = cv2.VideoWriter_fourcc(*'MJPG')  # Use 'MJPG' for better compatibility
+    fourcc = cv2.VideoWriter_fourcc(*'MJPG')
     out = cv2.VideoWriter(output_video, fourcc, fps, (width, height))
 
-    # Write images to the video
     for img in images:
         frame = cv2.imread(img)
         out.write(frame)
@@ -94,11 +93,17 @@ def save_as_video(image_folder, output_video, fps=10):
     out.release()
     print(f"Video saved as {output_video}")
 
-def run_testing(model_weights, device):
+def run_testing(model_weights, orig_model, device):
+    # Load model with new weights, inference each training frame, save output
+    if orig_model == 'dpt_large':
+        backbone = "vitl16_384"
+    elif orig_model == 'dpt_hybrid':
+        backbone = "vitb_rn50_384"
     model = load_model(weights=model_weights,
+                    backbone=backbone,
                     device=device,
                     eval=True)
-    model_orig = load_model(weights="dpt_large",
+    model_orig = load_model(weights=orig_model,
                     device=device,
                     eval=True)
 
@@ -110,18 +115,21 @@ def run_testing(model_weights, device):
             pred = model(input)
             pred_orig = model_orig(input)
         input, truth, pred, pred_orig = np.array(input).squeeze(), np.array(truth).squeeze(), np.array(pred).squeeze(), np.array(pred_orig).squeeze()
-        # print(f"inputs: {input.shape}, truths: {truth.shape}, depth_pred: {pred.shape}")
+
         save_frame(f'DepthEstimation/imgs{model_weights}', input, truth, pred_orig, pred, batch_idx)
 
 
 # Example usage
 
-model_weights = 'DepthEstimation/models/2024-11-25 13:55:32/syndrone_weights_16.pt'
+# model_weights = 'DepthEstimation/models/2024-11-25 13:55:32/syndrone_weights_16.pt'
+# orig_model = 'dpt_large'
+ 
+model_weights = 'DepthEstimation/models/2024-11-26 08:43:27/syndrone_weights_18.pt'
+orig_model = 'dpt_hybrid'
 
 # select device
-# device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 device = "cpu"
 print("device: %s" % device)
-run_testing(model_weights, device)
 
+run_testing(model_weights, orig_model, device)
 save_as_video(f'DepthEstimation/imgs{model_weights}', "output_video2.mp4")

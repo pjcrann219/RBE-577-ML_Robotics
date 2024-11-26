@@ -13,17 +13,19 @@ import DPT.util.io as io
 from DPT.dpt.transforms import Resize, NormalizeImage, PrepareForNet
 from DPT.dpt.models import DPTDepthModel
 
-def load_model(weights="dpt_large", device=None, eval=False):
+def load_model(weights="dpt_large", backbone=None, device=None, eval=False):
     # Function to load model given weights and device
     if weights == "dpt_large":
         weights = "DepthEstimation/DPT/weights/dpt_large-midas-2f21e586.pt"
+        backbone = "vitl16_384"
     elif weights == "dpt_hybrid":
-        print("not yet implemented")
+        weights = "DepthEstimation/DPT/weights/dpt_hybrid-midas-501f0c75.pt"
+        backbone = "vitb_rn50_384"
     
     # Load model with desired weights
     model = DPTDepthModel(
         path=weights,
-        backbone="vitl16_384",
+        backbone=backbone,
         non_negative=True,
         enable_attention_hooks=False,
     )
@@ -130,8 +132,6 @@ def SyndroneDataloader(rgb_dir = 'data/Town01_Opt_120_color/Town01_Opt_120/Clear
             normalization,
             PrepareForNet(),
         ])
-    
-    # depth_transform = ResizeDepth()
 
     dataset = SyndroneDataset(rgb_dir=rgb_dir, depth_dir=depth_dir, rgb_transform=rgb_transform, split=split)
     dataloader = DataLoader(dataset=dataset, batch_size=batch_size, shuffle=shuffle)

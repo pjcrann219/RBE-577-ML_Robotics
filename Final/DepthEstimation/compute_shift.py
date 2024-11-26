@@ -55,8 +55,7 @@ ms = []
 bs = []
 
 for batch_idx, (input, truth) in enumerate(dataloader):
-    # if batch_idx > 100:
-    #     break
+
     with torch.no_grad():
         input, truth = input.to(device), truth.to(device)
         output = model(input)
@@ -65,11 +64,6 @@ for batch_idx, (input, truth) in enumerate(dataloader):
         ms.append(m)
         bs.append(b)
         print(f"batch: {batch_idx}/{len(dataloader)} m = {m:.9f} b = {b:.9f}")
-
-        # print(f"batch: {batch_idx}/{len(dataloader)} - Shapes: input {inputs.shape}, output {outputs.shape}, truth {truths.shape}")
-        # print(f"\tOutput: min({outputs.min():.4f}) max({outputs.max():.4f}) avg({outputs.mean():.4f})")
-        # print(f"\tTruth: min({truths.min():.4f}) max({truths.max():.4f}) avg({truths.mean():.4f})")
-        # plot_tensors(inputs.cpu().detach(), outputs.cpu().detach(), truths.cpu().detach())
 
 avg_m, avg_b = sum(ms) / len(ms), sum(bs) / len(bs)
 print(f"avg_m = {avg_m:.9f}, avg_b = {avg_b:.9f}")
