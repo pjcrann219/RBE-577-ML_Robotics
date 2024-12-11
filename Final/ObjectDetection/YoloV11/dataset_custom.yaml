@@ -1,0 +1,6 @@
+train: /home/mainubuntu/Desktop/Repositories/yoloV11/train
+val: /home/mainubuntu/Desktop/Repositories/yoloV11/val
+
+nc: 5
+
+names: ["Bicycle", "Bus","Car","Motorcycle","Truck"]
