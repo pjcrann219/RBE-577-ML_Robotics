@@ -119,6 +119,7 @@ def SyndroneDataloader(rgb_dir = 'data/Town01_Opt_120_color/Town01_Opt_120/Clear
 
     net_w = net_h = 384
     normalization = NormalizeImage(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])
+
     rgb_transform = Compose([
             Resize(
                 net_w,
@@ -132,7 +133,7 @@ def SyndroneDataloader(rgb_dir = 'data/Town01_Opt_120_color/Town01_Opt_120/Clear
             normalization,
             PrepareForNet(),
         ])
-
+    
     dataset = SyndroneDataset(rgb_dir=rgb_dir, depth_dir=depth_dir, rgb_transform=rgb_transform, split=split)
     dataloader = DataLoader(dataset=dataset, batch_size=batch_size, shuffle=shuffle)
     

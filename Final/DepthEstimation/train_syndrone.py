@@ -30,12 +30,13 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print("device: %s" % device)
 
 hparams = {
-    'learning_rate':1e-5,
+    'learning_rate':1e-4,
     'batch_size': 1,
     'num_epochs': 30,
     'model_weights': "dpt_large",
     'lam': 0.5,
-    'gamma': 0.93
+    'gamma': 0.94,
+    'weight_decay': 0.005
 }
 
 writer.add_hparams(hparams, {})
@@ -50,7 +51,7 @@ dataloader_train = SyndroneDataloader(batch_size=1,shuffle=True, split='train')
 dataloader_test = SyndroneDataloader(batch_size=1,shuffle=False, split='test')
 
 # Optimizer and LR Schuduler
-optimizer = torch.optim.Adam(model.parameters(), lr=hparams['learning_rate'])
+optimizer = torch.optim.Adam(model.parameters(), lr=hparams['learning_rate'], weight_decay=hparams['weight_decay'])
 scheduler = ExponentialLR(optimizer, gamma=hparams['gamma'])
 
 num_epochs = hparams['num_epochs']
@@ -81,6 +82,8 @@ for epoch in range(num_epochs):
         # Aligned Outputs = align_pred(output) = pred 1/distance
         # Pred distance = 1 / aligned_prediction
 
+        writer.add_scalar('BatchLoss/train', loss.item(), epoch * len(dataloader_train) + batch_idx)
+
     train_epoch_loss = train_epoch_loss/len(dataloader_train)
     
     # Testing
@@ -95,6 +98,8 @@ for epoch in range(num_epochs):
 
             loss = eigen_loss(aligned_pred.cpu(), truths.cpu(), lam=hparams['lam'])
             test_epoch_loss += loss.item()
+
+            writer.add_scalar('BatchLoss/test', loss.item(), epoch * len(dataloader_test) + batch_idx)
 
     test_epoch_loss = test_epoch_loss / len(dataloader_test)
 

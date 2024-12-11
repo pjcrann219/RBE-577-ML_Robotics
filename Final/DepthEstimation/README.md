@@ -7,4 +7,4 @@ To train from scratch:
 2) Run train_syndrone.py
 
 To inference fine tuned syndrone model:
-1) run inference_syndrone.py
+1) Run inference_syndrone.py
